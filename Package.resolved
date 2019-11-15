@@ -68,8 +68,8 @@
         "package": "jobs",
         "repositoryURL": "https://github.com/tonyarnold/jobs.git",
         "state": {
-          "branch": "feature/backport-delay-until-to-3",
-          "revision": "2697f76b9fb4becf9c53e3da70f099197d84652e",
+          "branch": "feature/backport-worker",
+          "revision": "b42ea933c371e60fa5bbb6ea1ba450a25895cb4b",
           "version": null
         }
       },

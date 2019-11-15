@@ -26,14 +26,13 @@ public struct JobsPostgreSQLDriver {
     }
 }
 
-extension JobsPostgreSQLDriver: JobsPersistenceLayer {
-    /// The `EventLoop` to run jobs on
-    public var eventLoop: EventLoop {
-        return container.next()
+extension JobsPostgreSQLDriver: JobsDriver {
+    public var eventLoopGroup: EventLoopGroup {
+        return try! container.make()
     }
 
     /// See `JobsPersistenceLayer.get`
-    public func get(key: String) -> EventLoopFuture<JobStorage?> {
+    public func get(key: String, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<JobStorage?> {
         // Establish a database connection
         return container.withPooledConnection(to: databaseIdentifier) { conn in
             // We need to use SKIP LOCKED in order to handle multiple threads all getting the next job
@@ -68,23 +67,23 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
         }
     }
 
-    public func set(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
+    public func set(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
         // Establish a database connection
         return container.withPooledConnection(to: databaseIdentifier) { conn in
             // Encode and save the Job
-            let data = try JSONEncoder().encode(jobStorage)
-            return JobModel(key: key, jobId: jobStorage.id, data: data)
+            let data = try JSONEncoder().encode(job)
+            return JobModel(key: key, jobId: job.id, data: data)
                 .save(on: conn)
                 .transform(to: ())
         }
     }
 
-    public func completed(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
+    public func completed(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
         // Establish a database connection
         return container.withPooledConnection(to: databaseIdentifier) { conn in
             // Update the state
             JobModel.query(on: conn)
-                .filter(\.jobId == jobStorage.id)
+                .filter(\.jobId == job.id)
                 .first()
                 .flatMap { jobModel in
                     if let jobModel = jobModel {
@@ -109,10 +108,10 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
         return key + "-processing"
     }
 
-    public func requeue(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
+    public func requeue(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
         return container.withPooledConnection(to: databaseIdentifier) { conn in
             JobModel.query(on: conn)
-                .filter(\.jobId == jobStorage.id)
+                .filter(\.jobId == job.id)
                 .first()
                 .flatMap { jobModel in
                     if let jobModel = jobModel {
