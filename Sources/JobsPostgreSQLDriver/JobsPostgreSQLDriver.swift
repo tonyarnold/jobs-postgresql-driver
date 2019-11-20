@@ -31,7 +31,7 @@ extension JobsPostgreSQLDriver: JobsDriver {
         return try! container.make()
     }
 
-    /// See `JobsPersistenceLayer.get`
+    /// See `JobsDriver.get`
     public func get(key: String, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<JobStorage?> {
         // Establish a database connection
         return container.withPooledConnection(to: databaseIdentifier) { conn in
@@ -115,10 +115,15 @@ extension JobsPostgreSQLDriver: JobsDriver {
                 .first()
                 .flatMap { jobModel in
                     if let jobModel = jobModel {
-                        // Set the Job's state back to pending
-                        jobModel.state = .pending
-                        jobModel.updatedAt = Date()
-                        return jobModel.save(on: conn).transform(to: ())
+                        return jobModel.delete(on: conn).flatMap {
+                            // Set the Job's state back to pending
+                            jobModel.state = .pending
+
+                            // Generate a new ID for this entry
+                            jobModel.id = nil
+
+                            return jobModel.create(on: conn).transform(to: ())
+                        }
                     }
 
                     return conn.future()
