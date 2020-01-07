@@ -206,6 +206,13 @@ extension JobModel: Migration {
             connection.create(index: "job_key_idx").on(\JobModel.key).run()
         }
     }
+
+    public static func revert(on connection: PostgreSQLConnection) -> EventLoopFuture<Void> {
+        return connection.drop(index: "job_key_idx").run()
+            .flatMap { _ in
+                return Database.delete(self, on: connection)
+            }
+    }
 }
 
 /// Allows `JobModel` to be encoded to and decoded from HTTP messages.
