@@ -16,7 +16,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/tonyarnold/jobs.git",
-            .branch("feature/backport-worker")
+            .branch("feature/backport-worker-new")
         ),
         .package(
             url: "https://github.com/vapor/fluent-postgres-driver.git",
